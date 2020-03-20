@@ -1,0 +1,97 @@
+- name: Update and upgrade apt packages
+  become: yes
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Install packages
+  apt:
+    pkg:
+      - aptitude
+      - ntp
+      - tcpdump
+      - htop
+      - iftop
+      - iotop
+      - sysstat
+      - screen
+      - nmap
+      - vim
+      - mc
+      - mtr-tiny
+      - ethtool
+      - iperf
+      - rsync
+      - pv
+      - bash-completion
+      - strace
+      - sudo
+      - postfix
+      - mailutils
+      - curl
+      - dbus
+      - python-pip
+      - python-setuptools
+      - ntpdate
+    state: present
+  tags:
+    - common
+
+- name: Install the gpg key for nodejs LTS
+  apt_key:
+    url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+    state: present
+
+- name: Install the nodejs LTS repos
+  apt_repository:
+    repo: "deb https://deb.nodesource.com/node_13.x bionic main"
+    state: present
+    update_cache: yes
+
+- name: Install the nodejs
+  apt:
+    name: nodejs
+    state: present
+
+- name: Uninstall apache2, we will use nginx
+  apt:
+    pkg: apache2
+    state: absent
+
+- name: Manage keys
+  authorized_key: user=root state=present key="{{ lookup('file', item) }}"
+  with_items:
+    - "{{ authorized_keys }}"
+  tags:
+    - common
+    - ssh
+    - keys
+
+- name: Disable ssh password login (keys only)
+  lineinfile: dest=/etc/ssh/sshd_config regexp="^PasswordAuthentication" line="PasswordAuthentication no" state=present
+  notify:
+    - restart ssh
+  tags:
+    - common
+    - ssh
+
+# Debian Jessie
+- name: Set timezone to Europe/Moscow
+  timezone: name=Europe/Moscow
+  tags:
+    - common
+
+- name: Configure locale
+  locale_gen: name={{ item }} state=present
+  with_items:
+    - ru_RU.UTF-8
+    - ru_RU
+  tags:
+    - common
+    - locale
+
+- name: Run ntpdate
+  command: '{{ timesync_ntpdate }} -u {{ timesync_server }}'
+  tags:
+    - common

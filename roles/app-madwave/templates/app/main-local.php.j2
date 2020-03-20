@@ -1,0 +1,46 @@
+<?php
+return [
+    'components' => [
+        'db' => [
+            'class' => 'yii\db\Connection',
+            'dsn' => 'mysql:host={{ mysql_hostname }};dbname={{ mysql_database }}',
+            'username' => '{{ mysql_username }}',
+            'password' => '{{ mysql_password }}',
+            'charset' => 'utf8mb4',
+        ],
+        'mailer' => [
+            'class' => 'yii\swiftmailer\Mailer',
+            'viewPath' => '@common/mail',
+            'useFileTransport' => false,
+            'messageConfig' => [
+                'charset' => 'UTF-8',
+                'from' => [
+                    '{{ app_smtp_mail_general_email }}' => '{{ app_smtp_mail_from_name }}'
+                ],
+            ],
+            'transport' => [
+                'class' => 'Swift_SmtpTransport',
+                'host' => '{{ app_smtp_mail_host }}',  // e.g. smtp.mandrillapp.com or smtp.gmail.com
+                'username' => '{{ app_smtp_mail_user }}',
+                'password' => '{{ app_smtp_mail_password }}',
+                'port' => '{{ app_smtp_mail_port }}', // Port 25 is a very common port too
+                'encryption' => '{{ app_smtp_mail_protocol }}', // It is often used, check your provider or mail server specs
+            ],
+        ],
+        'log' => [
+            'traceLevel' => YII_DEBUG ? 3 : 0,
+            'targets' => [
+                [
+                    'class' => 'notamedia\sentry\SentryTarget',
+                    'dsn' => '{{ sentry_app_dsn }}',
+                    'levels' => ['error', 'warning'],
+                    // Write the context information (the default is true):
+                    'context' => true,
+                    'clientOptions' => [
+                        'environment' => 'test'
+                    ]
+                ],
+            ],
+        ],
+    ],
+];

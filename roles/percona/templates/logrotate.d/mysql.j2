@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+/var/log/mysql/error.log
+{
+        rotate 7
+	create 660 mysql adm
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+        postrotate
+                /usr/bin/mysql -e 'FLUSH LOGS; select sleep(2);' > /dev/null
+        endscript
+}

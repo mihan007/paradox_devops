@@ -1,0 +1,13 @@
+---
+docker_compose_version: "1.24.1"
+docker_compose_path: /usr/local/bin/docker-compose
+
+sentry_mail_host: 'smtp.mailgun.org'
+sentry_mail_port: 587
+sentry_mail_user: postmaster@mg.prgods.com
+sentry_mail_password: f84a34b8a4a32cee737761545757ff58-f8faf5ef-3ab5c3bd
+sentry_mail_use_tls: true
+sentry_mail_from: 'sentry@mg.prgods.com'
+sentry_url_prefix: 'http://sentry.prgods.com:9000'
+
+sentry_system_secret_key: '@#R@#r23r23!!!#344rfcs'

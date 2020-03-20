@@ -1,0 +1,6 @@
+---
+authorized_keys:
+  - public_keys/kuklin_m_home
+
+timesync_server: 0.de.pool.ntp.org
+timesync_ntpdate: /usr/sbin/ntpdate

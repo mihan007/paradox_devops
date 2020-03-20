@@ -1,0 +1,10 @@
+[site1-prgods-test]
+test
+
+[site1-prgods-test:vars]
+ansible_ssh_host=192.168.0.1
+ansible_ssh_user=user
+ansible_ssh_port=9999
+ansible_become=yes
+ansible_become_password=passwordofuser
+app_role='test'

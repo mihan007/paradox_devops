@@ -1,0 +1,11 @@
+# test.prgods.com routines
+# Ansible managed. Do not edit by hands.
+# Look for the template:
+# These cron job will only be installed on prod servers
+# deploy using:
+# ansible-playbook -i hosts prgods-prod.yml --tags cron
+
+MAILTO=""
+PATH=/usr/lib/sysstat:/usr/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# * * * * *  /some_command >> /some.log

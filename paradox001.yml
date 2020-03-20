@@ -1,0 +1,7 @@
+---
+
+- hosts:
+    - paradox001
+
+  roles:
+    - common

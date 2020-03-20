@@ -1,0 +1,103 @@
+# install percona
+#
+# Example:
+#- hosts: prgods-db
+#  vars:
+#    mysql_innodb_buffer_pool_size: "512M" 	# CHANGEME on prod
+#    mysql_innodb_log_file_size: "128M"
+#    mysql_bind_address: "127.0.0.1"		# CHANGEME on prod
+#  roles:
+#  - prgods-percona
+
+
+#- name: Obtaining percona public key
+##  apt_key: url=http://www.percona.com/downloads/RPM-GPG-KEY-percona state=present
+#  apt_key: keyserver=keys.gnupg.net id=1C4CBDCDCD2EFD2A state=present
+#  tags:
+#  - mysql
+
+#- name: Adding percona repository
+#  apt_repository: repo='deb http://repo.percona.com/apt {{ ansible_distribution_release }} main'  state=present
+#  register: percona_repo
+#  tags:
+#  - mysql
+
+- name: Make sure pymysql is present
+  pip:
+    name: setuptools
+    state: present
+
+- name: Make sure pymysql is present
+  pip:
+    name: pymysql
+    state: present
+
+- name: Install percona repo
+  apt: deb=https://repo.percona.com/apt/percona-release_latest.xenial_all.deb
+  tags:
+    - mysql
+
+- name: Update apt cache
+  apt: update_cache=yes #cache_valid_time=3600
+  tags:
+    - mysql
+
+- name: Install percona database server
+  apt:
+    pkg:
+      - percona-server-server-5.7
+      - percona-server-client-5.7
+      - percona-toolkit
+      - percona-xtrabackup
+      - python-mysqldb
+    state: present
+  tags:
+    - mysql
+
+- name: Ensure mysql is running and starts on boot
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  tags:
+    - mysql
+
+- name: Create `/root/.my.cnf` with root password credentials
+  template:
+    src:  my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    mode: 0600
+  notify: restart mysql
+  tags:
+    - mysql
+    - mysql-config
+
+- name: Ensure mysql root password is updated for all root accounts
+  mysql_user:
+    name: root
+    host: "{{ mysql_hostname }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    password: "{{ mysql.root_db_password }}"
+    priv: '*.*:ALL,GRANT'
+    check_implicit_admin: true
+  loop: "{{ mysql.hosts }}"
+  notify: restart mysql
+
+- name: Copy logrote mysq config
+  template: src=logrotate.d/mysql.j2 dest=/etc/logrotate.d/mysql
+  tags:
+    - mysql
+    - mysql-config
+
+- name: Create database for app
+  mysql_db: name={{ mysql_database }} login_unix_socket=/var/run/mysqld/mysqld.sock encoding=utf8mb4 state=present
+  tags:
+    - mysql
+    - mysql-prepare
+
+- name: Create user for app
+  mysql_user: name={{ mysql_username }} password={{ mysql_password }} host='%' priv={{ mysql_database }}.*:ALL state=present
+  tags:
+    - mysql
+    - mysql-prepare

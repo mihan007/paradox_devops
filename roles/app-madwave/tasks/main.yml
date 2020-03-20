@@ -1,0 +1,416 @@
+# Install app
+- name: Update apt cache
+  apt: update_cache=yes
+  tags:
+    - app
+    - nginx
+    - php
+
+- name: Install nginx
+  apt:
+    pkg:
+      - nginx
+    state: latest
+  tags:
+    - app
+    - nginx
+
+- name: Install git
+  apt:
+    pkg:
+      - git
+    state: latest
+  tags:
+    - app
+    - git
+
+- name: PHP | Install Ondrej PHP PPA
+  apt_repository: repo='ppa:ondrej/php' update_cache=yes
+  tags:
+    - app
+    - php
+
+- name: PHP | Install PHP 7.4
+  apt: pkg=php7.4 state=latest
+  tags:
+    - app
+    - php
+
+- name: PHP | Install PHP Modules
+  apt:
+    pkg:
+      - php-fpm
+      - php7.4-mysql
+      - php-pear
+      - php7.4-curl
+      - php7.4-bcmath
+      - php7.4-mbstring
+      - php7.4-intl
+    state: present
+  tags:
+    - app
+    - php
+
+- name: Tune php.ini
+  template: src=php7/fpm/php.ini.j2 dest=/etc/php/7.4/fpm/php.ini backup=yes
+  notify:
+    - reload php7-fpm
+  tags:
+    - app
+    - php
+    - php-config
+
+- name: Tune php php7/fpm/pool.d/www.conf
+  template: src=php7/fpm/pool.d/www.conf.j2 dest=/etc/php/7.4/fpm/pool.d/www.conf backup=yes
+  notify:
+    - reload php7-fpm
+  tags:
+    - app
+    - php
+    - php-config
+
+- name: Install packages
+  apt:
+    pkg:
+      - php7.4-xdebug
+    state: present
+  when: app_role != 'production'
+  tags:
+    - php
+
+- name: Tune php mods-available/xdebug.ini
+  template: src=php7/mods-available/xdebug.ini.j2 dest=/etc/php/7.3/mods-available/xdebug.ini backup=yes
+  when: app_role != 'production'
+  notify:
+    - reload php7-fpm
+  tags:
+    - app
+    - php
+    - php-config
+
+- name: Copy nginx.conf
+  template: src=nginx/nginx.conf.j2 dest=/etc/nginx/nginx.conf
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Generate DH Parameters with a different size (2048 bits)
+  openssl_dhparam:
+    path: /etc/nginx/dhparams.pem
+    size: 2048
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Remove default nginx config (1/3)
+  file: path=/etc/nginx/sites-enabled/default state=absent
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+
+- name: Remove default nginx/apache pages (2/3)
+  file: path=/var/www/html/index.nginx-debian.html state=absent
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+
+- name: Remove default nginx/apache pages (2/3)
+  file: path=/var/www/html/index.html state=absent
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+
+- name: Copy nginx config test-admin.prgods.com
+  template: src=nginx/test-admin.{{ nginx_server_name }}.j2 dest=/etc/nginx/sites-available/test-admin.{{ nginx_server_name }}
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Copy nginx config test.prgods.com
+  template: src=nginx/test.{{ nginx_server_name }}.j2 dest=/etc/nginx/sites-available/test.{{ nginx_server_name }}
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Put nginx symlinks test.prgods.com
+  file: path=/etc/nginx/sites-enabled/test.{{ nginx_server_name }}  src="../sites-available/test.{{ nginx_server_name }}" state=link
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Put nginx symlinks test-admin.prgods.com
+  file: path=/etc/nginx/sites-enabled/test-admin.{{ nginx_server_name }}  src="../sites-available/test-admin.{{ nginx_server_name }}" state=link
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Create project dir
+  file: path=/var/www/html/{{ nginx_server_name }} state=directory
+  tags:
+    - app
+    - app-dir
+
+- name: Make sure we can use htpasswd module
+  apt: "pkg=python-passlib state=present"
+  tags:
+    - nginx
+    - nginx-config
+
+- name: Create global htpasswd file
+  htpasswd:
+    path: /etc/nginx/global_htpasswd
+    name: "{{ nginx_global_auth_username }}"
+    password: "{{ nginx_global_auth_password }}"
+  tags:
+    - nginx
+    - nginx-config
+
+- name: Add nginx auth global config
+  copy:
+    content: |
+      auth_basic "{{ nginx_global_auth_realm }}";
+      auth_basic_user_file /etc/nginx/global_htpasswd;
+    dest: /etc/nginx/conf.d/htpasswd.conf
+  notify:
+    - restart nginx
+  tags:
+    - nginx
+
+- name: Ensure .ssh directory exists.
+  file:
+    path: /var/www/.ssh
+    state: directory
+    mode: 0700
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Ensure Github deploy key is present on the server.
+  copy:
+    src: files/deploy_keys/deploy_key
+    dest: /var/www/.ssh/deploy_key
+    mode: 0600
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+# See: https://stackoverflow.com/a/37096534/100134
+- name: Install setfacl support
+  become: yes
+  apt: pkg=acl
+  tags:
+    - app
+    - deploy
+
+- name: Ensure /var/www/html directory has correct permissions.
+  file: dest=/var/www/html owner=www-data group=www-data mode=u=rwX,g=rX,o=rX recurse=yes
+  tags:
+    - app
+    - deploy
+
+- name: Ensure .ansible directory exists with correct permissions
+  file:
+    path: /var/www/.ansible
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Ensure .ansible/tmp directory exists with correct permissions
+  file:
+    path: /var/www/.ansible/tmp
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Clone/pull prgods.com main repo
+  git:
+    repo: "{{ app_git_repo }}"
+    version: "{{ app_git_branch }}"
+    dest: /var/www/html/{{ nginx_server_name }}
+    accept_hostkey: yes
+    key_file: /var/www/.ssh/deploy_key
+    force: yes
+  become: yes
+  become_user: www-data
+  register: git
+  notify: reload php7-fpm
+  tags:
+    - app
+    - deploy
+
+- name: Init environment
+  shell: cd /var/www/html/{{ nginx_server_name }} && chmod +x ./init && ./init --env={{ app_role }} --overwrite=All
+  tags:
+    - app
+    - deploy
+
+- name: Generate app config
+  template: src=app/params.php.j2 dest=/var/www/html/{{ nginx_server_name }}/common/config/params.php
+  tags:
+    - app
+    - deploy
+
+- name: Generate db config
+  template: src=app/main-local.php.j2 dest=/var/www/html/{{ nginx_server_name }}/common/config/main-local.php
+  tags:
+    - app
+    - deploy
+
+- name: Check if composer is installed
+  stat: path=/usr/local/bin/composer
+  register: composer
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer
+  shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  when: composer.stat.exists == false
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Speed up composer
+  shell: /usr/local/bin/composer global require hirak/prestissimo
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer packages without dev packages
+  shell: cd /var/www/html/{{ nginx_server_name }} && /usr/local/bin/composer install --no-dev
+  when: app_role == 'production'
+  become: yes
+  become_user: www-data
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer packages including dev packages
+  shell: cd /var/www/html/{{ nginx_server_name }} && /usr/local/bin/composer install
+  when: app_role != 'production'
+  become: yes
+  become_user: www-data
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Apply framework migrations
+  shell: cd /var/www/html/{{ nginx_server_name }} && ./yii migrate --migrationPath=@yii/i18n/migrations/ --interactive=0
+  tags:
+    - app
+    - deploy
+
+- name: Apply app migrations
+  shell: cd /var/www/html/{{ nginx_server_name }} && ./yii migrate --interactive=0
+  tags:
+    - app
+    - deploy
+
+- name: Prepare geo database, download geo file (1/4)
+  unarchive:
+    src: http://download.geonames.org/export/dump/alternateNamesV2.zip
+    dest: /var/www/html/{{ nginx_server_name }}/console/data
+    remote_src: yes
+  run_once: True
+  tags:
+    - app
+    - geo
+
+- name: Prepare geo database, import-geo (2/4)
+  shell: cd /var/www/html/{{ nginx_server_name }} && ./yii init/import-geo
+  run_once: True
+  tags:
+    - app
+    - geo
+
+- name: Prepare geo database, prepare (3/4)
+  shell: cd /var/www/html/{{ nginx_server_name }} && ./yii init/prepare
+  run_once: True
+  tags:
+    - app
+    - geo
+
+- name: Prepare geo database, update (4/4)
+  shell: cd /var/www/html/{{ nginx_server_name }} && ./yii init/update
+  run_once: True
+  tags:
+    - app
+    - geo
+
+- name: Install npm packages
+  shell: cd /var/www/html/{{ nginx_server_name }} && npm --unsafe-perm install
+  become: yes
+  tags:
+    - app
+    - deploy
+    - npm
+
+- name: Build frontend
+  shell: cd /var/www/html/{{ nginx_server_name }} && npm run build
+  become: yes
+  tags:
+    - app
+    - deploy
+    - npm
+
+- name: Ensure /var/www/html directory has correct permissions.
+  file: dest=/var/www/html owner=www-data group=www-data mode=u=rwX,g=rX,o=rX recurse=yes
+  tags:
+    - app
+    - deploy
+
+######## Cronjobs section
+- name: Put test cronjobs
+  template: src=cron.d/test.{{ nginx_server_name }}.j2 dest=/etc/cron.d/test.{{ nginx_server_name }} mode="0444"
+  when: app_role == 'production'
+  tags:
+    - app
+    - cron
+
+- name: Install env variables via  /etc/environment
+  template: src=environment.j2 dest=/etc/environment mode="644"
+  notify:
+    - reload php7-fpm
+  tags:
+    - app
+    - env
+    - environment
