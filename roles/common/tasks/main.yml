@@ -38,22 +38,6 @@
   tags:
     - common
 
-- name: Install the gpg key for nodejs LTS
-  apt_key:
-    url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
-    state: present
-
-- name: Install the nodejs LTS repos
-  apt_repository:
-    repo: "deb https://deb.nodesource.com/node_13.x bionic main"
-    state: present
-    update_cache: yes
-
-- name: Install the nodejs
-  apt:
-    name: nodejs
-    state: present
-
 - name: Uninstall apache2, we will use nginx
   apt:
     pkg: apache2
@@ -90,8 +74,3 @@
   tags:
     - common
     - locale
-
-- name: Run ntpdate
-  command: '{{ timesync_ntpdate }} -u {{ timesync_server }}'
-  tags:
-    - common
