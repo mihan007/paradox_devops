@@ -21,8 +21,6 @@
 [client]
 port		= 3306
 socket		= /var/run/mysqld/mysqld.sock
-user=root
-password={{ mysql.root_db_password }}
 default-character-set = utf8mb4
 
 # Here is entries for some specific programs
@@ -69,7 +67,6 @@ thread_cache_size       = 8
 #
 # * Query Cache Configuration
 #
-query_cache_limit	= 1M
 query_cache_size        = 16M
 #
 # * Logging and Replication

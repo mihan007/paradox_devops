@@ -1,13 +1,13 @@
 # install percona
 #
 # Example:
-#- hosts: prgods-db
+#- hosts: paradox001
 #  vars:
 #    mysql_innodb_buffer_pool_size: "512M" 	# CHANGEME on prod
 #    mysql_innodb_log_file_size: "128M"
 #    mysql_bind_address: "127.0.0.1"		# CHANGEME on prod
 #  roles:
-#  - prgods-percona
+#  - percona
 
 
 #- name: Obtaining percona public key
@@ -22,7 +22,7 @@
 #  tags:
 #  - mysql
 
-- name: Make sure pymysql is present
+- name: Make sure setuptools is present
   pip:
     name: setuptools
     state: present
@@ -33,7 +33,7 @@
     state: present
 
 - name: Install percona repo
-  apt: deb=https://repo.percona.com/apt/percona-release_latest.xenial_all.deb
+  apt: deb=https://repo.percona.com/apt/percona-release_latest.bionic_all.deb
   tags:
     - mysql
 
@@ -42,11 +42,17 @@
   tags:
     - mysql
 
+- name: Make it install 8.0
+  shell: percona-release setup ps80
+  become: true
+  tags:
+    - mysql
+
 - name: Install percona database server
   apt:
     pkg:
-      - percona-server-server-5.7
-      - percona-server-client-5.7
+      - percona-server-server
+      - percona-server-client
       - percona-toolkit
       - percona-xtrabackup
       - python-mysqldb
@@ -73,31 +79,8 @@
     - mysql
     - mysql-config
 
-- name: Ensure mysql root password is updated for all root accounts
-  mysql_user:
-    name: root
-    host: "{{ mysql_hostname }}"
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    password: "{{ mysql.root_db_password }}"
-    priv: '*.*:ALL,GRANT'
-    check_implicit_admin: true
-  loop: "{{ mysql.hosts }}"
-  notify: restart mysql
-
 - name: Copy logrote mysq config
   template: src=logrotate.d/mysql.j2 dest=/etc/logrotate.d/mysql
   tags:
     - mysql
     - mysql-config
-
-- name: Create database for app
-  mysql_db: name={{ mysql_database }} login_unix_socket=/var/run/mysqld/mysqld.sock encoding=utf8mb4 state=present
-  tags:
-    - mysql
-    - mysql-prepare
-
-- name: Create user for app
-  mysql_user: name={{ mysql_username }} password={{ mysql_password }} host='%' priv={{ mysql_database }}.*:ALL state=present
-  tags:
-    - mysql
-    - mysql-prepare

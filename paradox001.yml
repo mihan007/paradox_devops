@@ -8,3 +8,6 @@
     - nodejs
     - ntp
     - php
+    - nginx
+    - percona
+    - app-paradox_band

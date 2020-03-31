@@ -1,7 +1,0 @@
-; Ansible managed. Do not edit by hands.
-zend_extension=xdebug.so
-{% if app_role == 'vagrant' %}
-xdebug.remote_enable=1
-xdebug.remote_host={{ ansible_default_ipv4.gateway }}
-xdebug.remote_port=9000
-{% endif %}

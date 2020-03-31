@@ -1,0 +1,231 @@
+## Please manually upload paradox.band.key and paradox.band.crt to /etc/ssl/
+- name: Copy nginx config paradox.band
+  template: src=nginx/{{ nginx_paradox_band_server_name }}.j2 dest=/etc/nginx/sites-available/{{ nginx_paradox_band_server_name }}
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Put nginx symlinks paradox.band
+  file: path=/etc/nginx/sites-enabled/{{ nginx_paradox_band_server_name }}  src="../sites-available/{{ nginx_paradox_band_server_name }}" state=link
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx
+    - nginx-config
+
+- name: Create project dir
+  file: path=/var/www/html/{{ nginx_paradox_band_server_name }} state=directory
+  tags:
+    - app
+    - app-dir
+
+- name: Ensure .ssh directory exists.
+  file:
+    path: /var/www/.ssh
+    state: directory
+    mode: 0700
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Ensure Github deploy key is present on the server.
+  copy:
+    src: files/deploy_keys/deploy_key
+    dest: /var/www/.ssh/deploy_key
+    mode: 0600
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+# See: https://stackoverflow.com/a/37096534/100134
+- name: Install setfacl support
+  become: yes
+  apt: pkg=acl
+  tags:
+    - app
+    - deploy
+
+- name: Ensure /var/www/html directory has correct permissions.
+  file: dest=/var/www/html owner=www-data group=www-data mode=u=rwX,g=rX,o=rX recurse=yes
+  tags:
+    - app
+    - deploy
+
+- name: Ensure .ansible directory exists with correct permissions
+  file:
+    path: /var/www/.ansible
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Ensure .ansible directory exists with correct permissions
+  file:
+    path: /var/www/.composer
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Ensure .ansible/tmp directory exists with correct permissions
+  file:
+    path: /var/www/.ansible/tmp
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  tags:
+    - app
+    - deploy
+
+- name: Clone/pull paradox.band main repo
+  git:
+    repo: "{{ app_git_repo }}"
+    version: "{{ app_git_branch }}"
+    dest: /var/www/html/{{ nginx_paradox_band_server_name }}
+    accept_hostkey: yes
+    key_file: /var/www/.ssh/deploy_key
+    force: yes
+  become: yes
+  become_user: www-data
+  register: git
+  notify: reload php7-fpm
+  tags:
+    - app
+    - deploy
+
+- name: Generate app config
+  template: src=app/.env.j2 dest=/var/www/html/{{ nginx_paradox_band_server_name }}/.env
+  tags:
+    - app
+    - deploy
+    - app-config
+
+- name: Check if composer is installed
+  stat: path=/usr/local/bin/composer
+  register: composer
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer
+  shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  when: composer.stat.exists == false
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Speed up composer
+  shell: /usr/local/bin/composer global require hirak/prestissimo
+  run_once: true
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer packages without dev packages
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && /usr/local/bin/composer install --no-dev
+  when: app_role == 'production'
+  become: yes
+  become_user: www-data
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Install composer packages including dev packages
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && /usr/local/bin/composer install
+  when: app_role != 'production'
+  become: yes
+  become_user: www-data
+  tags:
+    - app
+    - deploy
+    - composer
+
+- name: Create database for app
+  mysql_db: name={{ mysql_database }} login_unix_socket=/var/run/mysqld/mysqld.sock encoding=utf8mb4 state=present
+  tags:
+    - mysql
+    - mysql-prepare
+
+- name: Create user for app
+  mysql_user: name={{ mysql_username }} password={{ mysql_password }} host='%' priv={{ mysql_database }}.*:ALL state=present
+  no_log: true
+  tags:
+    - mysql
+    - mysql-prepare
+
+
+- name: Apply migrations
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && php artisan migrate --force
+  tags:
+    - app
+    - deploy
+
+- name: Clear caches
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && php artisan cache:clear && php artisan route:clear && php artisan config:clear && php artisan view:clear
+  tags:
+    - app
+    - deploy
+
+- name: Optimize things
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && php artisan optimize
+  tags:
+    - app
+    - deploy
+
+- name: Install npm packages
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && npm --unsafe-perm install
+  become: yes
+  tags:
+    - app
+    - deploy
+    - npm
+
+- name: Build frontend
+  shell: cd /var/www/html/{{ nginx_paradox_band_server_name }} && npm run production
+  become: yes
+  tags:
+    - app
+    - deploy
+    - npm
+
+- name: Ensure /var/www/html directory has correct permissions.
+  file: dest=/var/www/html owner=www-data group=www-data mode=u=rwX,g=rX,o=rX recurse=yes
+  tags:
+    - app
+    - deploy
+
+######## Cronjobs section
+- name: Put test cronjobs
+  template: src=cron.d/{{ nginx_paradox_band_server_name }}.j2 dest=/etc/cron.d/{{ nginx_paradox_band_server_name }} mode="0444"
+  when: app_role == 'production'
+  tags:
+    - app
+    - cron
+
+- name: Install env variables via  /etc/environment
+  template: src=environment.j2 dest=/etc/environment mode="644"
+  notify:
+    - reload php7-fpm
+  tags:
+    - app
+    - env
+    - environment

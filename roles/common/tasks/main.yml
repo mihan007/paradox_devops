@@ -34,6 +34,8 @@
       - python-pip
       - python-setuptools
       - ntpdate
+      - git
+      - python3-pip
     state: present
   tags:
     - common

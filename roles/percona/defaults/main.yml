@@ -4,7 +4,8 @@ mysql_innodb_log_file_size: "128M"
 mysql_bind_address: "127.0.0.1"
 
 mysql:
-  root_db_password: kl32rjjk2333
+  hostname: "127.0.0.1"
+  root_db_password: kl32rdSWjk2333
   hosts:
     - 127.0.0.1
     - ::1

@@ -1,0 +1,19 @@
+---
+nginx_paradox_band_server_name: 'paradox.band'
+
+app_git_repo: 'git@github.com:mihan007/paradox_band.git'
+app_git_branch: 'simplified'
+
+mysql_hostname: 'localhost'
+mysql_database: paradox_band
+mysql_username: paradox_band
+mysql_password: YU3nsn22374dasaq
+
+mail_from_address: robot@paradox.band
+mail_from_name: "Робот Парадокса"
+mailgun_secret: c5fe6a607a642b899391605ac198dcdf-46ac6b00-2861017a
+mailgun_domain: paradox.band
+mailgun_endpoint: api.eu.mailgun.net
+admin_email: mikhail.kuklin@paradox.band
+
+sentry_laravel_dsn: https://e40f41b4b0fd4b82a1bde319bd146523@sentry.io/5183000

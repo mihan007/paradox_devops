@@ -3,19 +3,18 @@
 # HTTP server
 server {
 	listen 80;
-	server_name test.{{ nginx_server_name }};
-	return 301 https://test.{{ nginx_server_name }}$request_uri;
+	server_name {{ nginx_paradox_band_server_name }};
+	return 301 https://{{ nginx_paradox_band_server_name }}$request_uri;
 }
 
 # HTTPS server
 server {
     listen 443 ssl default deferred;
-    server_name test.{{ nginx_server_name }};
+    server_name nginx_paradox_band_server_name;
 
     ssl on;
-    ssl_certificate         /etc/letsencrypt/live/test.{{ nginx_server_name }}/fullchain.pem;
-    ssl_certificate_key     /etc/letsencrypt/live/test.{{ nginx_server_name }}/privkey.pem;
-    ssl_trusted_certificate /etc/letsencrypt/live/test.{{ nginx_server_name }}/fullchain.pem;
+    ssl_certificate         /etc/ssl/{{ nginx_paradox_band_server_name }}.crt;
+    ssl_certificate_key     /etc/ssl/{{ nginx_paradox_band_server_name }}.key;
 
     ssl_session_cache shared:SSL:50m;
     ssl_session_timeout 5m;
@@ -38,16 +37,19 @@ server {
 	client_max_body_size        32m;
 
     ### Common
-	root /var/www/html/{{ nginx_server_name }}/frontend/web;
+	root /var/www/html/{{ nginx_paradox_band_server_name }}/public;
 	index  index.php;
 	charset utf-8;
 
-	access_log      /var/log/nginx/test.{{ nginx_server_name }}.access.log prgods-main;
-	error_log       /var/log/nginx/test.{{ nginx_server_name }}.error.log;
+	access_log      /var/log/nginx/{{ nginx_paradox_band_server_name }}.access.log;
+	error_log       /var/log/nginx/{{ nginx_paradox_band_server_name }}.error.log;
 
 	location / {
-		try_files $uri $uri/ /index.php?$args;
+		try_files $uri $uri/ /index.php?$query_string;
 	}
+
+	location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
 
 ### Enable php
 	location ~ \.php$ {
@@ -72,7 +74,7 @@ server {
 		add_header Cache-Control "private, must-revalidate";
 	}
 
-	location ~* \.(pdf)$ {
+	location ~* \.(pdf|doc|docx|xls|xlsx)$ {
 		expires        1d;
 		add_header Cache-Control "public";
 	}

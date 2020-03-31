@@ -1,0 +1,61 @@
+# Install app
+- name: Update apt cache
+  apt: update_cache=yes
+  tags:
+    - app
+    - nginx
+    - php
+
+- name: Install nginx
+  apt:
+    pkg:
+      - nginx
+    state: latest
+  tags:
+    - nginx
+
+- name: Copy nginx.conf
+  template: src=nginx/nginx.conf.j2 dest=/etc/nginx/nginx.conf
+  notify:
+    - reload nginx
+  tags:
+    - app
+    - nginx-config
+
+- name: Generate DH Parameters with a different size (2048 bits)
+  run_once: true
+  openssl_dhparam:
+    path: /etc/nginx/dhparams.pem
+    size: 2048
+  tags:
+    - app
+    - nginx-config
+
+- name: Remove default nginx config (1/3)
+  run_once: true
+  file: path=/etc/nginx/sites-enabled/default state=absent
+  notify:
+    - reload nginx
+  tags:
+    - nginx
+
+- name: Remove default nginx/apache pages (2/3)
+  run_once: true
+  file: path=/var/www/html/index.nginx-debian.html state=absent
+  notify:
+    - reload nginx
+  tags:
+    - nginx
+
+- name: Remove default nginx/apache pages (2/3)
+  run_once: true
+  file: path=/var/www/html/index.html state=absent
+  notify:
+    - reload nginx
+  tags:
+    - nginx
+
+- name: Create ssl dir
+  file: path=/etc/ssl state=directory
+  tags:
+    - nginx
