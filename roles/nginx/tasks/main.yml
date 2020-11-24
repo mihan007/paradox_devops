@@ -20,6 +20,7 @@
     - reload nginx
   tags:
     - app
+    - nginx
     - nginx-config
 
 - name: Generate DH Parameters with a different size (2048 bits)

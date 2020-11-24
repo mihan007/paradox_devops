@@ -11,3 +11,35 @@
     - nginx
     - percona
     - app-paradox_band
+    - { role: datadog.datadog, become: yes }
+  vars:
+    datadog_checks:
+      process:
+        init_config:
+        instances:
+          - name: ssh
+            search_string: [ 'ssh', 'sshd' ]
+          - name: syslog
+            search_string: [ 'rsyslog' ]
+            cpu_check_interval: 0.2
+            exact_match: true
+            ignore_denied_access: true
+      nginx:
+        init_config:
+        instances:
+          - nginx_status_url: https://{{ nginx_paradox_band_server_name }}/nginx_status/
+            tags:
+              - "source:nginx"
+
+        #Log collection is available on Agent 6 and 7
+        logs:
+          - type: file
+            path: /var/log/nginx/{{ nginx_paradox_band_server_name }}.access.log
+            service: paradox.band
+            source: nginx
+            sourcecategory: http_web_access
+          - type: file
+            path: /var/log/nginx/{{ nginx_paradox_band_server_name }}.error.log
+            service: paradox.band
+            source: nginx
+            sourcecategory: http_web_access

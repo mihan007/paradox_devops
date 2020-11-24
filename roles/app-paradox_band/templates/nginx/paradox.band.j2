@@ -60,6 +60,14 @@ server {
 		try_files $uri $uri/ /index.php?$query_string;
 	}
 
+	location /nginx_status {
+        stub_status on;
+        access_log   off;
+        allow 188.243.33.90;
+        allow {{ ansible_ssh_host }};
+        deny all;
+    }
+
 	location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
 
