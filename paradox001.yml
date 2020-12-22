@@ -11,3 +11,20 @@
     - nginx
     - percona
     - app-paradox_band
+    - { role: geerlingguy.certbot, tags: [ 'https'] }
+
+  vars:
+    certbot_create_if_missing: true
+    certbot_create_method: standalone
+    certbot_auto_renew_user: "www-data"
+    certbot_auto_renew: true
+    certbot_auto_renew_minute: "30"
+    certbot_auto_renew_hour: "3"
+    certbot_auto_renew_options: "--quiet --no-self-upgrade"
+    certbot_create_command: "{{ certbot_script }} certonly --standalone --noninteractive --agree-tos --email {{ cert_item.email | default(certbot_admin_email) }} -d {{ cert_item.domains | join(',') }}"
+    certbot_create_standalone_stop_services:
+      - nginx
+    certbot_certs:
+      - email: mikhail.kuklin@paradox.band
+        domains:
+          - paradox.band
