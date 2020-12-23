@@ -10,5 +10,5 @@ ansible-playbook -i hosts paradox001.yml
 
 - Деплой paradox.band
 ```
-ansible-playbook -i hosts paradox001.yml --tags deploy
+~~ansible-playbook -i hosts paradox001.yml --tags deploy~~
 ```

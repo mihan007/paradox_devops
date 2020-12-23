@@ -2,7 +2,7 @@
 nginx_paradox_band_server_name: 'paradox.band'
 
 app_git_repo: 'git@github.com:mihan007/paradox_band.git'
-app_git_branch: 'simplified'
+app_git_branch: 'master'
 
 mysql_hostname: 'localhost'
 mysql_database: paradox_band
